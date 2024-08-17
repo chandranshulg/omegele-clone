@@ -16,20 +16,25 @@
         }
 
         .chat-container {
-            width: 300px;
+            width: 350px;
             background-color: #fff;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 500px;
         }
 
         .chat-box {
-            height: 400px;
+            height: 350px;
             overflow-y: scroll;
             border: 1px solid #ddd;
             margin-bottom: 10px;
             padding: 10px;
             border-radius: 5px;
+            background-color: #f9f9f9;
         }
 
         #chat-input {
@@ -51,36 +56,128 @@
         #send-button:hover {
             background-color: #218838;
         }
+
+        #clear-button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #dc3545;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        #clear-button:hover {
+            background-color: #c82333;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
+
+        .message.self {
+            background-color: #d1e7dd;
+        }
+
+        .message-time {
+            font-size: 0.8em;
+            color: #6c757d;
+            text-align: right;
+        }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <div id="chat-box" class="chat-box"></div>
-        <input id="chat-input" type="text" placeholder="Type a message...">
-        <button id="send-button">Send</button>
+        <div class="controls">
+            <input id="chat-input" type="text" placeholder="Type a message...">
+            <button id="send-button">Send</button>
+            <button id="clear-button">Clear</button>
+        </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-
         const chatBox = document.getElementById('chat-box');
         const chatInput = document.getElementById('chat-input');
         const sendButton = document.getElementById('send-button');
+        const clearButton = document.getElementById('clear-button');
+
+        function appendMessage(message, isSelf = false) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            if (isSelf) messageElement.classList.add('self');
+            
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            messageElement.innerHTML = `
+                <div>${message}</div>
+                <div class="message-time">${time}</div>
+            `;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
 
         sendButton.addEventListener('click', () => {
-            const message = chatInput.value;
-            if (message.trim() !== '') {
-                socket.emit('sendMessage', message);
+            const message = chatInput.value.trim();
+            if (message !== '') {
+                appendMessage(message, true);
                 chatInput.value = '';
+                fakeReply();
             }
         });
 
-        socket.on('receiveMessage', (message) => {
-            const messageElement = document.createElement('div');
-            messageElement.textContent = message;
-            chatBox.appendChild(messageElement);
-            chatBox.scrollTop = chatBox.scrollHeight;
+        clearButton.addEventListener('click', () => {
+            chatBox.innerHTML = '';
+        });
+
+        function fakeReply() {
+            const replies = [
+                "Hello! How are you?",
+                "What's your favorite color?",
+                "Do you like coding?",
+                "Tell me something interesting.",
+                "What's your favorite movie?",
+                "I'm just a simple chat bot!",
+                "Do you like music?",
+                "What's the weather like today?",
+                "Have you read any good books lately?",
+                "Nice to meet you!"
+            ];
+            const randomReply = replies[Math.floor(Math.random() * replies.length)];
+            setTimeout(() => {
+                appendMessage(randomReply);
+            }, 1000);
+        }
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+
+        // Load chat history from localStorage
+        window.addEventListener('load', () => {
+            const savedMessages = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            savedMessages.forEach(message => appendMessage(message.content, message.isSelf));
+        });
+
+        // Save chat history to localStorage
+        window.addEventListener('beforeunload', () => {
+            const messages = Array.from(document.getElementsByClassName('message')).map(messageElement => {
+                return {
+                    content: messageElement.children[0].textContent,
+                    isSelf: messageElement.classList.contains('self')
+                };
+            });
+            localStorage.setItem('chatHistory', JSON.stringify(messages));
         });
     </script>
 </body>
