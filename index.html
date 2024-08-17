@@ -8,11 +8,13 @@
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
+            color: #333;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         .chat-container {
@@ -24,7 +26,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            height: 500px;
+            height: 600px;
         }
 
         .chat-box {
@@ -93,29 +95,129 @@
             color: #6c757d;
             text-align: right;
         }
+
+        #typing-indicator {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-bottom: 10px;
+            visibility: hidden;
+        }
+
+        #theme-toggle {
+            margin-top: 10px;
+            padding: 10px;
+            border: none;
+            background-color: #007bff;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #theme-toggle:hover {
+            background-color: #0056b3;
+        }
+
+        #username-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        #char-counter {
+            font-size: 0.8em;
+            color: #6c757d;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        .dark-mode {
+            background-color: #333;
+            color: #fff;
+        }
+
+        .dark-mode .chat-container {
+            background-color: #444;
+        }
+
+        .dark-mode .chat-box {
+            background-color: #555;
+        }
+
+        .dark-mode #chat-input {
+            background-color: #666;
+            color: #fff;
+        }
+
+        .dark-mode .message {
+            background-color: #777;
+        }
+
+        .dark-mode .message.self {
+            background-color: #888;
+        }
+
+        .dark-mode #send-button {
+            background-color: #17a2b8;
+        }
+
+        .dark-mode #send-button:hover {
+            background-color: #138496;
+        }
+
+        .dark-mode #clear-button {
+            background-color: #dc3545;
+        }
+
+        .dark-mode #clear-button:hover {
+            background-color: #c82333;
+        }
+
+        .dark-mode #theme-toggle {
+            background-color: #ffc107;
+            color: #333;
+        }
+
+        .dark-mode #theme-toggle:hover {
+            background-color: #e0a800;
+        }
     </style>
 </head>
 <body>
     <div class="chat-container">
+        <input id="username-input" type="text" placeholder="Enter your name...">
         <div id="chat-box" class="chat-box"></div>
+        <div id="typing-indicator">Stranger is typing...</div>
         <div class="controls">
             <input id="chat-input" type="text" placeholder="Type a message...">
             <button id="send-button">Send</button>
             <button id="clear-button">Clear</button>
         </div>
+        <div id="char-counter">0/200 characters</div>
+        <button id="theme-toggle">Toggle Dark Mode</button>
     </div>
+
+    <audio id="notification-sound" src="https://www.soundjay.com/button/beep-07.wav" preload="auto"></audio>
 
     <script>
         const chatBox = document.getElementById('chat-box');
         const chatInput = document.getElementById('chat-input');
         const sendButton = document.getElementById('send-button');
         const clearButton = document.getElementById('clear-button');
+        const themeToggle = document.getElementById('theme-toggle');
+        const charCounter = document.getElementById('char-counter');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const usernameInput = document.getElementById('username-input');
+        const notificationSound = document.getElementById('notification-sound');
+
+        let typingTimeout;
 
         function appendMessage(message, isSelf = false) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             if (isSelf) messageElement.classList.add('self');
-            
+
             const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             messageElement.innerHTML = `
                 <div>${message}</div>
@@ -123,19 +225,33 @@
             `;
             chatBox.appendChild(messageElement);
             chatBox.scrollTop = chatBox.scrollHeight;
+
+            if (!isSelf) {
+                notificationSound.play();
+            }
         }
 
         sendButton.addEventListener('click', () => {
             const message = chatInput.value.trim();
-            if (message !== '') {
-                appendMessage(message, true);
+            if (message !== '' && usernameInput.value.trim() !== '') {
+                appendMessage(`${usernameInput.value}: ${message}`, true);
                 chatInput.value = '';
+                charCounter.textContent = "0/200 characters";
                 fakeReply();
             }
         });
 
         clearButton.addEventListener('click', () => {
             chatBox.innerHTML = '';
+        });
+
+        chatInput.addEventListener('input', () => {
+            charCounter.textContent = `${chatInput.value.length}/200 characters`;
+            typingIndicator.style.visibility = 'visible';
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                typingIndicator.style.visibility = 'hidden';
+            }, 1000);
         });
 
         function fakeReply() {
@@ -153,9 +269,13 @@
             ];
             const randomReply = replies[Math.floor(Math.random() * replies.length)];
             setTimeout(() => {
-                appendMessage(randomReply);
-            }, 1000);
+                appendMessage(`Stranger: ${randomReply}`);
+            }, 1500);
         }
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+        });
 
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
